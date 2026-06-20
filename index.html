@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tami Asistan v1.0</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; }
+    </style>
+</head>
+<body class="bg-zinc-950 text-zinc-100 min-h-screen pb-16">
+
+    <header class="border-b border-zinc-800 sticky top-0 bg-zinc-950/90 backdrop-blur-md z-50 px-6 py-4 flex justify-between items-center">
+        <div class="flex items-center gap-2">
+            <span class="w-3 h-3 bg-lime-400 rounded-full animate-pulse"></span>
+            <h1 class="text-lg font-black tracking-widest text-white">tami <span class="text-lime-400 font-light text-sm">asistan</span></h1>
+        </div>
+        <button id="permissionBtn" class="text-[10px] bg-lime-400/10 text-lime-400 border border-lime-400/20 px-3 py-1 rounded-full font-mono hover:bg-lime-400 hover:text-zinc-950 transition cursor-pointer">
+            🔔 Bildirimleri Aktif Et
+        </button>
+    </header>
+
+    <main class="max-w-4xl mx-auto px-4 mt-6 space-y-6">
+
+        <div id="asistanKutusu" class="bg-gradient-to-r from-zinc-900 to-zinc-900 border border-zinc-800 p-4 rounded-2xl shadow-xl">
+            <h2 class="text-xs font-bold text-lime-400 uppercase tracking-wider mb-2">🚨 Dijital Asistan Raporu</h2>
+            <p id="asistanMesaji" class="text-sm text-zinc-300">Bulut verileri yükleniyor, hesaplamalar yapılıyor...</p>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <section class="bg-zinc-900 border border-zinc-800 p-5 rounded-2xl shadow-md space-y-4">
+                <h3 class="text-sm font-bold text-zinc-400">💰 Harçlık Durumu</h3>
+                <div class="grid grid-cols-1 gap-3">
+                    <div>
+                        <label class="block text-[11px] text-zinc-500 font-mono mb-1">Haftalık Sabit Harçlığın (TL)</label>
+                        <input type="number" id="weeklyIncome" placeholder="Örn: 200" class="w-full bg-zinc-950 border border-zinc-800 rounded-xl p-2.5 text-sm text-lime-400 font-bold focus:outline-none focus:border-lime-400">
+                    </div>
+                    <button id="saveFinanceBtn" class="w-full bg-lime-400 text-zinc-950 text-xs font-bold py-2.5 rounded-xl hover:bg-lime-300 transition cursor-pointer">Finansal Durumu Güncelle</button>
+                </div>
+            </section>
+
+            <section class="bg-zinc-900 border border-zinc-800 p-5 rounded-2xl shadow-md space-y-4">
+                <h3 class="text-sm font-bold text-zinc-400">🎯 Hayalindeki Hedef</h3>
+                <div class="grid grid-cols-2 gap-2">
+                    <div class="col-span-2">
+                        <label class="block text-[11px] text-zinc-500 font-mono mb-1">Almak İstediğin Şey</label>
+                        <input type="text" id="targetName" placeholder="Örn: Wraith W60 Keyboard" class="w-full bg-zinc-950 border border-zinc-800 rounded-xl p-2.5 text-sm text-white focus:outline-none focus:border-lime-400">
+                    </div>
+                    <div class="col-span-2">
+                        <label class="block text-[11px] text-zinc-500 font-mono mb-1">Hedefin Fiyatı (TL)</label>
+                        <input type="number" id="targetPrice" placeholder="Örn: 2500" class="w-full bg-zinc-950 border border-zinc-800 rounded-xl p-2.5 text-sm text-white focus:outline-none focus:border-lime-400">
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <section id="safakKartal" class="hidden bg-zinc-900 border-2 border-lime-400/30 p-5 rounded-2xl text-center shadow-lg space-y-2">
+            <p class="text-xs text-zinc-400 font-mono uppercase">🎯 HEDEF ŞAFAK DURUMU</p>
+            <h2 id="safakMetni" class="text-lg font-bold text-white"></h2>
+            <div class="w-full bg-zinc-950 h-2 rounded-full overflow-hidden border border-zinc-800 mt-2">
+                <div id="safakBar" class="bg-lime-400 h-full transition-all duration-500" style="width: 0%"></div>
+            </div>
+        </section>
+
+        <section class="bg-zinc-900 border border-zinc-800 p-5 rounded-2xl shadow-md">
+            <h3 class="text-sm font-bold text-zinc-400 mb-3">💳 Yeni Abonelik / Üyelik Ekle</h3>
+            <form id="subForm" class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <input type="text" id="subName" placeholder="Abonelik Adı (Örn: Spotify, Discord)" class="bg-zinc-950 border border-zinc-800 rounded-xl p-3 text-sm text-white focus:outline-none focus:border-zinc-600" required>
+                <input type="number" id="subPrice" placeholder="Aylık Ücret (TL)" class="bg-zinc-950 border border-zinc-800 rounded-xl p-3 text-sm text-white focus:outline-none focus:border-zinc-600" required>
+                <input type="number" id="subDay" placeholder="Çekileceği Gün (1-31 arası)" min="1" max="31" class="bg-zinc-950 border border-zinc-800 rounded-xl p-3 text-sm text-white focus:outline-none focus:border-zinc-600" required>
+                <button type="submit" class="sm:col-span-3 bg-zinc-800 border border-zinc-700 text-white font-medium rounded-xl text-sm p-2.5 hover:bg-zinc-700 transition cursor-pointer">Aboneliği Listeye Ekle</button>
+            </form>
+        </section>
+
+        <section class="space-y-3">
+            <h3 class="text-sm font-bold text-zinc-400">📋 Aktif Aboneliklerin</h3>
+            <div id="subList" class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                </div>
+        </section>
+
+    </main>
+
+    <script>
+        // Firebase Sihirli Bağlantı Bilgilerin (Akıllı Gardırop ile Aynı Proje)
+        const firebaseConfig = {
+            apiKey: "AIzaSyA7o96OrqwYXWby-TH7EPbdoXZo_kKscA",
+            authDomain: "akilli-gardirob.firebaseapp.com",
+            projectId: "akilli-gardirob",
+            storageBucket: "akilli-gardirob.appspot.com",
+            messagingSenderId: "801290029571",
+            appId: "1:801290029571:web:102b22c6423a92bca6dc36",
+            measurementId: "G-GWM8N1FE3M"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
+        // Elemanlar
+        const subForm = document.getElementById("subForm");
+        const subList = document.getElementById("subList");
+        const asistanMesaji = document.getElementById("asistanMesaji");
+        const safakKartal = document.getElementById("safakKartal");
+        const safakMetni = document.getElementById("safakMetni");
+        const safakBar = document.getElementById("safakBar");
+        const permissionBtn = document.getElementById("permissionBtn");
+
+        let haftalikHarclik = 0;
+        let hedefIsim = "";
+        let hedefFiyat = 0;
+        let toplamAylikGider = 0;
+
+        // TARAYICI BİLDİRİM İZNİ KONTROLÜ
+        if (Notification.permission === "granted") {
+            permissionBtn.innerText = "🔔 Bildirimler Aktif";
+            permissionBtn.disabled = true;
+        }
+
+        permissionBtn.addEventListener("click", () => {
+            Notification.requestPermission().then(permission => {
+                if (permission === "granted") {
+                    permissionBtn.innerText = "🔔 Bildirimler Aktif";
+                    permissionBtn.disabled = true;
+                    new Notification("Tami Asistan", { body: "Harika! Bildirim sistemi başarıyla aktifleştirildi kanka. 😎" });
+                }
+            });
+        });
+
+        // FOTOĞRAF VE TARAYICI BİLDİRİM TETİKLEYİCİ
+        function tetikleBildirim(baslik, mesaj) {
+            if (Notification.permission === "granted") {
+                new Notification(baslik, { body: mesaj });
+            }
+        }
+
+        // KULLANICI FİNANSAL BİLGİLERİNİ CANLI GETİRME
+        db.collection("user_finance").doc("tami_user").onSnapshot((doc) => {
+            if (doc.exists) {
+                const data = doc.data();
+                document.getElementById("weeklyIncome").value = data.weeklyIncome || "";
+                document.getElementById("targetName").value = data.targetName || "";
+                document.getElementById("targetPrice").value = data.targetPrice || "";
+                
+                haftalikHarclik = Number(data.weeklyIncome) || 0;
+                hedefIsim = data.targetName || "";
+                hedefFiyat = Number(data.targetPrice) || 0;
+            }
+            hesaplaVeRaporla();
+        });
+
+        // ABONELİKLERİ CANLI GETİRME
+        db.collection("subscriptions").onSnapshot((snapshot) => {
+            subList.innerHTML = "";
+            toplamAylikGider = 0;
+            let yaklasanOdemeler = [];
+            
+            const bugun = new Date();
+            const guncelGun = bugun.getDate(); // Ayın kaçıncı günündeyiz (1-31)
+
+            snapshot.forEach((doc) => {
+                const sub = doc.data();
+                const id = doc.id;
+                toplamAylikGider += Number(sub.price);
+
+                // Kalan Gün Hesaplama Mantığı
+                let kalanGun = sub.day - guncelGun;
+                if (kalanGun < 0) {
+                    // Gün geçtiyse önümüzdeki ay çekilecek demektir
+                    const toplamGun = new Date(bugun.getFullYear(), bugun.getMonth() + 1, 0).getDate();
+                    kalanGun = (toplamGun - guncelGun) + Number(sub.day);
+                }
+
+                // EĞER ÖDEMEYE TAM 1 GÜN KALDIYSA BİLDİRİM fırlat
+                if (kalanGun === 1) {
+                    yaklasanOdemeler.push(sub.name);
+                    tetikleBildirim("⚠️ ÖDEME HATIRLATMASI!", `Kanka yarın ${sub.name} aboneliğinin günü! Hesabından ${sub.price} TL çekilecek.`);
+                }
+
+                // Kart Arayüzü
+                const card = document.createElement("div");
+                card.className = "bg-zinc-900 border border-zinc-800 rounded-xl p-3 flex justify-between items-center shadow-sm";
+                card.innerHTML = `
+                    <div>
+                        <h4 class="text-xs font-bold text-white font-mono uppercase">${sub.name}</h4>
+                        <p class="text-[11px] text-zinc-500 mt-0.5">Ücret: <span class="text-zinc-300 font-bold">${sub.price} TL</span> | Gün: <span class="text-zinc-300">${sub.day}</span></p>
+                        <span class="text-[9px] ${kalanGun <= 3 ? 'text-red-400 bg-red-400/10' : 'text-zinc-400 bg-zinc-950'} px-2 py-0.5 rounded font-mono inline-block mt-1">⏳ ${kalanGun} gün kaldı</span>
+                    </div>
+                    <button onclick="deleteSub('${id}')" class="text-xs text-zinc-600 hover:text-red-400 cursor-pointer p-1">🗑️</button>
+                `;
+                subList.appendChild(card);
+            });
+
+            // Asistan Kutusu Yazısını Güncelleme
+            if (yaklasanOdemeler.length > 0) {
+                asistanMesaji.innerHTML = `⚠️ <span class="text-red-400 font-bold">DİKKAT KANKA!</span> Yarın ödemesi olan aboneliklerin var: <span class="text-white font-semibold">${yaklasanOdemeler.join(", ")}</span>. Tami hesabını kontrol etmeyi unutma!`;
+            } else {
+                asistanMesaji.innerHTML = `✅ <span class="text-lime-400 font-bold">Her şey yolunda kanka!</span> Önümüzdeki 24 saat içinde çekilecek acil bir abonelik ödemen bulunmuyor.`;
+            }
+
+            hesaplaVeRaporla();
+        });
+
+        // BÜTÇE VE HEDEF HESAPLAMA MOTORU (SİHİRLİ KISIM)
+        function hesaplaVeRaporla() {
+            if (haftalikHarclik <= 0 || hedefFiyat <= 0) {
+                safakKartal.classList.add("hidden");
+                return;
+            }
+
+            // Aylık toplam kazanç (1 ay ortalama 4.33 haftadır)
+            const aylikKazanc = haftalikHarclik * 4.33;
+            // Abonelikler çıktıktan sonra aylık net biriken cep harçlığı
+            const aylikNetBiriken = aylikKazanc - toplamAylikGider;
+
+            if (aylikNetBiriken <= 0) {
+                safakKartal.classList.remove("hidden");
+                safakMetni.innerHTML = `<span class="text-red-400">Kanka abonelik giderlerin harçlığını geçiyor! 😱</span><br><span class="text-xs text-zinc-500">Bu bütçeyle ${hedefIsim} alman imkansız duruyor, harcamaları kısman lazım.</span>`;
+                safakBar.style.width = "0%";
+                return;
+            }
+
+            // Hedefe ulaşmak için gereken AY sayısı
+            const gerekenAy = hedefFiyat / aylikNetBiriken;
+            // Ayı haftaya ve güne çevirme
+            const toplamKalanGun = Math.ceil(gerekenAy * 30);
+            const kalanHafta = Math.floor(toplamKalanGun / 7);
+            const kalanGunMod = toplamKalanGun % 7;
+
+            safakKartal.classList.remove("hidden");
+            
+            if (toplamKalanGun <= 0) {
+                safakMetni.innerHTML = `🎉 <span class="text-lime-400">Paran hazır kanka!</span> Hemen gidip <span class="text-white font-bold">${hedefIsim}</span> alabilirsin!`;
+                safakBar.style.width = "100%";
+            } else {
+                safakMetni.innerHTML = `🎯 <span class="text-lime-400">${hedefIsim}</span> için şafak: <span class="text-white font-bold">${kalanHafta} Hafta ${kalanGunMod} Gün</span> sonra elinde!`;
+                // Grafiksel ilerleme barı simülasyonu
+                const yuzde = Math.min(100, Math.max(5, (100 - (toplamKalanGun / 2))));
+                safakBar.style.width = `${yuzde}%`;
+            }
+        }
+
+        // FİNANSAL DURUMU KAYDETME
+        document.getElementById("saveFinanceBtn").addEventListener("click", async () => {
+            const weeklyIncome = document.getElementById("weeklyIncome").value;
+            const targetName = document.getElementById("targetName").value;
+            const targetPrice = document.getElementById("targetPrice").value;
+
+            try {
+                await db.collection("user_finance").doc("tami_user").set({
+                    weeklyIncome, targetName, targetPrice
+                });
+                alert("Tami Finansal verilerin güncellendi kanka! 💸");
+            } catch (e) { alert("Hata oluştu kanka!"); }
+        });
+
+        // YENİ ABONELİK KAYDI
+        subForm.addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const name = document.getElementById("subName").value;
+            const price = document.getElementById("subPrice").value;
+            const day = document.getElementById("subDay").value;
+
+            try {
+                await db.collection("subscriptions").add({
+                    name, price: Number(price), day: Number(day),
+                    createdAt: new Date().getTime()
+                });
+                subForm.reset();
+            } catch (error) { alert("Abonelik eklenemedi kanka!"); }
+        });
+
+        // ABONELİK SİLME
+        window.deleteSub = async (id) => {
+            if(confirm("Bu aboneliği listeden kaldırmak istiyor musun kanka?")) {
+                await db.collection("subscriptions").doc(id).delete();
+            }
+        };
+    </script>
+</body>
+</html>
